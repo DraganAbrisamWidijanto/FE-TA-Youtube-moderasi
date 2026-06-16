@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const PREDICT_API_URL = "http://127.0.0.1:8000/predict";
-const YOUTUBE_API_URL = "http://127.0.0.1:8000/analyze-youtube";
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://lambeyan-youtube-moderation-api.hf.space";
+const PREDICT_API_URL = `${API_BASE}/predict`;
+const YOUTUBE_API_URL = `${API_BASE}/analyze-youtube`;
 const MAX_TEXT_LENGTH = 20000;
 const MAX_YOUTUBE_URL_LENGTH = 2048;
 const MAX_METADATA_VALUE = 1000000000000;
