@@ -2,14 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
-const PREDICT_API_URL = `${API_BASE}/predict`;
-const YOUTUBE_API_URL = `${API_BASE}/analyze-youtube`;
+const PREDICT_API_URL = "http://127.0.0.1:8000/predict";
+const YOUTUBE_API_URL = "http://127.0.0.1:8000/analyze-youtube";
 const MAX_TEXT_LENGTH = 20000;
 const MAX_YOUTUBE_URL_LENGTH = 2048;
 const MAX_METADATA_VALUE = 1000000000000;
-const SAFE_CONFIDENCE_THRESHOLD = 0.8;
-const SAFE_MARGIN_THRESHOLD = 0.3;
 const WORD_CLOUD_THRESHOLD = 25;
 const WORD_CLOUD_COLORS = ["#0f766e", "#0284c7", "#0891b2", "#f97316", "#0f172a"];
 const YOUTUBE_PROGRESS_STAGES = [
@@ -98,15 +95,6 @@ const verdictStyles = {
     text: "text-emerald-700",
     summary:
       "Safe score is clearly dominant, so this result is treated as safely passed.",
-  },
-  safeWarning: {
-    label: "Safe with Warning",
-    badge: "border-amber-200 bg-amber-50 text-amber-700",
-    accent: "bg-amber-500",
-    panel: "border-amber-200 bg-amber-50",
-    text: "text-amber-700",
-    summary:
-      "Safe score is still higher than Unsafe, but this should be treated with caution.",
   },
   unsafe: {
     label: "Unsafe",
@@ -342,15 +330,7 @@ function getResultViewModel(result) {
   const [label0Probability, label1Probability] = getProbabilityPair(result);
   const margin = Math.abs(label1Probability - label0Probability);
 
-  let verdictKey = "safeWarning";
-  if (label1Probability > label0Probability) {
-    verdictKey = "unsafe";
-  } else if (
-    label0Probability >= SAFE_CONFIDENCE_THRESHOLD &&
-    margin >= SAFE_MARGIN_THRESHOLD
-  ) {
-    verdictKey = "safe";
-  }
+  const verdictKey = label1Probability > label0Probability ? "unsafe" : "safe";
 
   return {
     predictedLabel,
@@ -570,7 +550,7 @@ function ParentGuideDropdown() {
     "Buka video YouTube yang ingin diperiksa, lalu salin link dari tombol Bagikan.",
     "Tempel link video ke kolom YouTube URL di atas.",
     "Tekan Analyze YouTube Video dan tunggu sampai proses selesai.",
-    "Baca hasilnya: Safe berarti relatif aman, Safe with Warning perlu ditinjau lagi, dan Unsafe sebaiknya tidak diberikan ke anak.",
+    "Baca hasilnya: Safe berarti relatif aman dan Unsafe sebaiknya tidak diberikan ke anak. Periksa juga nilai Confidence margin untuk melihat seberapa tipis selisih probabilitasnya.",
     "Gunakan ringkasan dan konteks video sebagai bahan pendampingan sebelum anak menonton.",
   ];
 
@@ -600,17 +580,11 @@ function ParentGuideDropdown() {
 }
 
 function InputSection({
-  isYoutubeMode,
   url,
-  text,
-  metadata,
   isLoading,
   error,
   hasSession,
-  onModeChange,
   onUrlChange,
-  onTextChange,
-  onMetadataChange,
   onAnalyze,
   onReset,
 }) {
@@ -623,16 +597,14 @@ function InputSection({
         <div className="max-w-xl">
           <TextLabel>Input</TextLabel>
           <h2 className="mt-2 text-2xl font-semibold text-slate-950">
-            {isYoutubeMode ? "Analyze a YouTube video" : "Analyze content manually"}
+            Analyze a YouTube video
           </h2>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            {isYoutubeMode
-              ? "Paste a video link and let the backend assemble the analysis text."
-              : "Paste the content and add numeric signals for the model."}
-            </p>
+            Paste a video link and let the backend assemble the analysis text.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <StatusPill>{isYoutubeMode ? "YouTube URL" : "Manual input"}</StatusPill>
+          <StatusPill>YouTube URL</StatusPill>
           {hasSession ? (
             <SecondaryButton
               disabled={isLoading}
@@ -645,101 +617,30 @@ function InputSection({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-2 rounded-2xl bg-slate-100 p-1 sm:grid-cols-2">
-        <ModeButton
-          active={!isYoutubeMode}
-          label="Manual Input"
-          caption="Text and metadata."
-          disabled={isLoading}
-          onClick={() => onModeChange("manual")}
-        />
-        <ModeButton
-          active={isYoutubeMode}
-          label="YouTube URL"
-          caption="Video context."
-          disabled={isLoading}
-          onClick={() => onModeChange("youtube")}
-        />
-      </div>
-
       <div className="mt-6 space-y-5">
-        {isYoutubeMode ? (
-          <FieldShell>
-            <label
-              htmlFor="youtube-url"
-              className="block text-sm font-semibold text-slate-800"
-            >
-              YouTube URL
-            </label>
-            <input
-              id="youtube-url"
-              type="url"
-              value={url}
-              disabled={isLoading}
-              required
-              maxLength={MAX_YOUTUBE_URL_LENGTH}
-              onChange={(event) => onUrlChange(event.target.value)}
-              placeholder="https://www.youtube.com/watch?v=..."
-              className={cx(inputClassName, "mt-3")}
-            />
-            <p className="mt-3 text-xs leading-5 text-slate-500">
-              Title, description, tags, transcript, and top comments are combined for inference.
-            </p>
-            <ParentGuideDropdown />
-          </FieldShell>
-        ) : (
-          <>
-            <FieldShell>
-              <label
-                htmlFor="content-text"
-                className="block text-sm font-semibold text-slate-800"
-              >
-                Text
-              </label>
-              <textarea
-                id="content-text"
-                value={text}
-                disabled={isLoading}
-                required
-                maxLength={MAX_TEXT_LENGTH}
-                onChange={(event) => onTextChange(event.target.value)}
-                rows={9}
-                placeholder="Paste the content you want to analyze..."
-                className={cx(inputClassName, "mt-3 resize-y leading-6")}
-              />
-            </FieldShell>
-
-            <FieldShell>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-slate-800">Metadata</p>
-                <StatusPill>Empty fields default to 0</StatusPill>
-              </div>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                {metadataFields.map((field) => (
-                  <label key={field.key} className="block">
-                    <span className="mb-2 block text-sm text-slate-600">
-                      {field.label}
-                    </span>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min="0"
-                      max={MAX_METADATA_VALUE}
-                      step="1"
-                      value={metadata[field.key]}
-                      disabled={isLoading}
-                      onChange={(event) =>
-                        onMetadataChange(field.key, event.target.value)
-                      }
-                      placeholder={field.placeholder}
-                      className={inputClassName}
-                    />
-                  </label>
-                ))}
-              </div>
-            </FieldShell>
-          </>
-        )}
+        <FieldShell>
+          <label
+            htmlFor="youtube-url"
+            className="block text-sm font-semibold text-slate-800"
+          >
+            YouTube URL
+          </label>
+          <input
+            id="youtube-url"
+            type="url"
+            value={url}
+            disabled={isLoading}
+            required
+            maxLength={MAX_YOUTUBE_URL_LENGTH}
+            onChange={(event) => onUrlChange(event.target.value)}
+            placeholder="https://www.youtube.com/watch?v=..."
+            className={cx(inputClassName, "mt-3")}
+          />
+          <p className="mt-3 text-xs leading-5 text-slate-500">
+            Title, description, tags, transcript, and top comments are combined for inference.
+          </p>
+          <ParentGuideDropdown />
+        </FieldShell>
 
         <button
           type="button"
@@ -757,10 +658,8 @@ function InputSection({
               <LoadingSpinner className="h-4 w-4 border-white/40 border-t-white" />
               Analyzing...
             </>
-          ) : isYoutubeMode ? (
-            "Analyze YouTube Video"
           ) : (
-            "Analyze Content"
+            "Analyze YouTube Video"
           )}
         </button>
 
@@ -1104,12 +1003,11 @@ function DecisionDetails({ resultView }) {
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <p className="text-sm font-semibold text-slate-800">Decision rule</p>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Show Unsafe if label 1 is higher. Show Safe if label 0 is at least 80%
-          and the score gap is at least 30%. Otherwise show Safe with Warning.
+          The verdict follows the class with the highest predicted probability.
         </p>
       </div>
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <p className="text-sm font-semibold text-slate-800">Score separation</p>
+        <p className="text-sm font-semibold text-slate-800">Confidence margin</p>
         <p className="mt-3 text-3xl font-semibold text-slate-950">
           {resultView.marginPercent}
         </p>
@@ -1335,23 +1233,34 @@ function AnalyticsSection({
     <section className="space-y-4">
       <CollapsiblePanel
         title="Probability details"
-        description="Label scores and confidence split."
-        meta={resultView.marginPercent}
+        description="Safe and Unsafe probability scores."
         defaultOpen
       >
         <div className="grid gap-4 md:grid-cols-2">
           <ScoreBar
-            label="Label 0 score"
+            label="Safe score"
             value={resultView.label0Percent}
             barClassName="bg-slate-800"
-            hint="Current UI assumption: label 0 maps to Safe."
           />
           <ScoreBar
-            label="Label 1 score"
+            label="Unsafe score"
             value={resultView.label1Percent}
             barClassName="bg-orange-500"
-            hint="Current UI assumption: label 1 maps to Unsafe."
           />
+        </div>
+        <div className="mt-4 border-t border-slate-200 pt-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <p className="text-sm font-semibold text-slate-800">Confidence margin</p>
+            <p className="text-3xl font-semibold text-slate-950">
+              {resultView.marginPercent}
+            </p>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            Absolute difference between Safe score and Unsafe score.
+          </p>
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            Margin = | Safe score − Unsafe score |
+          </p>
         </div>
       </CollapsiblePanel>
 
@@ -1616,17 +1525,11 @@ export default function Page() {
             )}
           >
             <InputSection
-              isYoutubeMode={isYoutubeMode}
               url={url}
-              text={text}
-              metadata={metadata}
               isLoading={isLoading}
               error={error}
               hasSession={hasSession}
-              onModeChange={handleModeChange}
               onUrlChange={setUrl}
-              onTextChange={setText}
-              onMetadataChange={handleMetadataChange}
               onAnalyze={handleAnalyze}
               onReset={handleReset}
             />
