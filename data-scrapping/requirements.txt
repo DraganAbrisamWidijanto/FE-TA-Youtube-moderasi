@@ -1,0 +1,33 @@
+# ===========================================
+# Dependencies untuk YouTube Scraping
+# ===========================================
+
+# YouTube Data API v3
+google-api-python-client>=2.0.0
+
+# YouTube transcript (alternative)
+youtube-transcript-api>=0.6.0
+
+# Subtitle downloader (lebih reliable untuk bahasa Indonesia)
+yt-dlp>=2024.1.0
+
+# Environment loader
+python-dotenv>=1.0.0
+
+# Streamlit (untuk FE)
+streamlit>=1.30.0
+
+# pyngrok (untuk expose FE di Colab)
+pyngrok>=7.0.0
+
+# Data processing
+pandas>=2.0.0
+
+# HTTP requests
+requests>=2.31.0
+
+# ===========================================
+# Optional: Jupyter (jika ingin pakai notebook)
+# ===========================================
+# jupyter>=1.0.0
+# ipykernel>=6.0.0
